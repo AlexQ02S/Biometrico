@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - ISTS FACE-ID</title>
+    <link rel="icon" href="https://superarse.edu.ec/assets/img/content/logo/superarse_gris.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Fondo con degradado de 3 colores estilo iPhone */
+        body {
+            background: linear-gradient(135deg, #000000 0%, #1a1a40 45%, #4c1d95 100%);
+            background-attachment: fixed;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        /* Efecto Glassmorphism optimizado */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+        }
+
+        /* Input estilo iOS responsivo */
+        .ios-input {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .ios-input:focus {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: #a78bfa; 
+            box-shadow: 0 0 0 4px rgba(167, 139, 250, 0.15);
+        }
+
+        .iphone-button {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .iphone-button:active {
+            transform: scale(0.97);
+            opacity: 0.9;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-login { animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-6">
+
+    <div class="glass-card p-8 md:p-12 rounded-[2.5rem] md:rounded-[3rem] w-full max-w-[400px] animate-login text-white">
+
+        <div class="flex flex-col items-center mb-8 md:mb-10">
+            <div class="bg-white/5 p-4 rounded-3xl mb-6 border border-white/5">
+               <div class="p-2 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg shadow-lg">
+                <img src="https://superarse.edu.ec/assets/img/content/logo/superarse_gris.png" alt="Logo" class="h-6 brightness-200">
+            </div>
+            </div>
+                      <h2 class="text-xl font-bold tracking-tight">ISTS <span class="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400">FACE-ID</span></h2>
+            <p class="text-gray-400 text-xs md:text-sm mt-2 uppercase tracking-[0.2em] font-medium opacity-70">Acceso Administrativo</p>
+        </div>
+
+        <form method="POST" class="flex flex-col gap-4 md:gap-5">
+
+            <div class="relative group">
+                <input type="text"
+                    name="usuario"
+                    placeholder="Usuario"
+                    class="ios-input w-full p-4 rounded-2xl text-white focus:outline-none placeholder-gray-500 text-sm md:text-base"
+                    required>
+            </div>
+
+            <div class="relative group">
+                <input type="password"
+                    name="password"
+                    placeholder="Contraseña"
+                    class="ios-input w-full p-4 rounded-2xl text-white focus:outline-none placeholder-gray-500 text-sm md:text-base"
+                    required>
+            </div>
+
+            <button
+                class="iphone-button w-full bg-white text-black font-bold py-4 rounded-2xl shadow-2xl hover:bg-gray-100 mt-4 text-sm md:text-base transition-all">
+                Iniciar Sesión
+            </button>
+
+        </form>
+
+        <div class="mt-10 md:mt-12 text-center border-t border-white/5 pt-6">
+            <a href="/" class="iphone-button inline-flex items-center gap-2 text-[10px] md:text-xs text-gray-500 hover:text-purple-400 transition-colors uppercase tracking-widest font-bold">
+                <span class="text-lg">←</span> Volver al Biométrico
+            </a>
+        </div>
+
+    </div>
+
+    <div class="fixed bottom-6 text-[12px] uppercase tracking-[0.3em] text-white/90 font-light pointer-events-none">
+        ISTS FACE-ID v1.0
+    </div>
+
+</body>
+</html>

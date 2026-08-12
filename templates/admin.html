@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dashboard Admin - ISTS FACE-ID</title>
+    
+    <meta name="theme-color" content="#1a1a40">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <link rel="icon" href="https://superarse.edu.ec/assets/img/content/logo/superarse_gris.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #000000 0%, #1a1a40 45%, #4c1d95 100%);
+            background-attachment: fixed;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: white;
+            margin: 0;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .sidebar-mobile {
+            transform: translateX(-100%);
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .sidebar-mobile.open { transform: translateX(0); }
+
+        .ios-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            border-radius: 12px;
+            padding: 0.75rem;
+            width: 100%;
+        }
+        .ios-input:focus { border-color: #8b5cf6; background: rgba(255, 255, 255, 0.1); outline: none; }
+        
+        select.ios-input option { background: #1a1a40; color: white; }
+
+        .btn-ios-primary { background: #ffffff; color: #000; font-weight: 600; border-radius: 14px; transition: 0.2s; cursor: pointer; }
+        .btn-ios-primary:active { transform: scale(0.95); }
+
+        .btn-edit { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 10px; }
+        .btn-delete { background: rgba(220, 38, 38, 0.2); color: #f87171; border: 1px solid rgba(220, 38, 38, 0.3); border-radius: 10px; }
+
+        .face-oval {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 180px; height: 240px;
+            border: 2px dashed rgba(139, 92, 246, 0.6);
+            border-radius: 50% / 45%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .seccion { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
+    </style>
+</head>
+
+<body class="flex h-screen overflow-hidden">
+
+<div class="lg:hidden fixed top-5 right-5 z-50">
+    <button id="btnMenu" class="p-4 glass-panel rounded-2xl text-white shadow-2xl border-white/30 active:scale-90 transition-transform">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16m-16 6h16" />
+        </svg>
+    </button>
+</div>
+
+<aside id="sidebar" class="sidebar-mobile fixed lg:static lg:translate-x-0 w-72 h-full bg-black/80 backdrop-blur-3xl border-r border-white/10 flex flex-col z-40">
+    <div class="p-8">
+        <h1 class="text-xl font-bold text-white tracking-tighter italic">ISTS FACE-ID</h1>
+        <p class="text-[10px] text-purple-400 font-bold uppercase tracking-widest mt-1">Admin Panel</p>
+        
+        <div class="mt-8 py-4 px-4 glass-panel rounded-2xl border border-white/5">
+            <p class="text-[10px] text-gray-400 uppercase">Bienvenido</p>
+            <p class="text-sm font-bold text-white truncate">{{ user.nombre }} {{ user.apellido }}</p>
+        </div>
+    </div>
+
+    <nav class="flex-1 px-4 space-y-2 overflow-y-auto">
+        <button onclick="mostrarSeccion('registrarUsuario')" class="w-full flex items-center gap-3 p-4 rounded-2xl hover:bg-white/10 transition text-sm text-left">
+            <span>👤</span> Registro
+        </button>
+        <button onclick="mostrarSeccion('listadoGeneral')" class="w-full flex items-center gap-3 p-4 rounded-2xl hover:bg-white/10 transition text-sm text-left">
+            <span>🍱</span> Control General
+        </button>
+        <button onclick="mostrarSeccion('listadoHibrido')" class="w-full flex items-center gap-3 p-4 rounded-2xl hover:bg-white/10 transition text-sm text-left">
+            <span>🌙</span> Control Híbrido
+        </button>
+        <button onclick="mostrarSeccion('listadoEmpleados')" class="w-full flex items-center gap-3 p-4 rounded-2xl hover:bg-white/10 transition text-sm text-left">
+            <span>👥</span> Empleados
+        </button>
+    </nav>
+
+    <div class="p-6">
+        <a href="/logout" class="w-full flex items-center justify-center gap-2 p-4 rounded-2xl bg-red-600/20 text-red-400 border border-red-500/20 hover:bg-red-600/40 transition text-xs font-bold uppercase">
+            Salir
+        </a>
+    </div>
+</aside>
+
+<div id="overlay" class="fixed inset-0 bg-black/60 z-30 hidden lg:hidden"></div>
+
+<main class="flex-1 p-4 md:p-8 lg:p-12 overflow-y-auto w-full">
+
+    
+
+    <section id="registrarUsuario" class="seccion glass-panel p-6 md:p-10 rounded-[2.5rem] max-w-5xl mx-auto shadow-2xl">
+        <h2 class="text-2xl font-bold mb-8 italic text-white">Nuevo Registro</h2>
+        <form action="/crear_usuario" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <input name="nombre" placeholder="Nombre" class="ios-input text-sm" required>
+            <input name="apellido" placeholder="Apellido" class="ios-input text-sm" required>
+            <select name="sede" class="ios-input text-sm" required>
+                <option value="">Sede</option>
+                <option>Matriz</option>
+                <option>Alpallana</option>
+                <option>Hacienda Agusbella</option>
+                <option>Hibrido</option>
+            </select>
+            <input name="area" placeholder="Área" class="ios-input text-sm" required>
+            <select name="rol" id="rolUsuario" class="ios-input text-sm md:col-span-2" required>
+                <option value="">Rol</option>
+                <option value="administrador">Administrador</option>
+                <option value="empleado">Empleado</option>
+            </select>
+            
+            <div id="datosAdmin" class="col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-5 hidden">
+                <input name="usuario" placeholder="Usuario" class="ios-input text-sm">
+                <input name="password" placeholder="Password" type="password" class="ios-input text-sm">
+            </div>
+            
+            <div class="col-span-1 md:col-span-2 glass-panel p-6 rounded-3xl mt-4 text-center">
+                <div class="flex flex-col lg:flex-row gap-8 items-center justify-center">
+                    <div class="relative w-[320px] h-[240px] rounded-3xl overflow-hidden bg-black border border-white/10">
+                        <video id="video" width="320" height="240" autoplay class="w-full h-full object-cover"></video>
+                        <div class="face-oval"></div>
+                    </div>
+                    <canvas id="canvas" width="320" height="240" class="hidden"></canvas>
+                    <div class="flex flex-col gap-4">
+                        <button type="button" id="tomarFoto" class="btn-ios-primary px-8 py-4 text-xs uppercase shadow-lg">Capturar</button>
+                        <input type="hidden" name="foto_capturada" id="foto_capturada">
+                        <img id="previewFoto" class="w-32 rounded-2xl hidden mx-auto border-2 border-purple-500">
+                    </div>
+                </div>
+            </div>
+            <button class="col-span-1 md:col-span-2 btn-ios-primary p-5 mt-4 uppercase text-sm">Guardar Usuario</button>
+        </form>
+    </section>
+
+    <section id="listadoGeneral" class="seccion hidden">
+
+<div class="glass-panel p-6 rounded-[2rem] mb-8">
+
+<form method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+
+<input type="date" name="fecha_inicio_general" value="{{fecha_inicio_general}}" class="ios-input">
+
+<input type="date" name="fecha_fin_general" value="{{fecha_fin_general}}" class="ios-input">
+
+<select name="empleado_general" class="ios-input">
+<option value="">Todos los empleados</option>
+
+{% for e in lista_empleados %}
+<option value="{{e.id}}" {% if empleado_general == e.id|string %}selected{% endif %}>
+{{e.nombre}} {{e.apellido}}
+</option>
+{% endfor %}
+
+</select>
+
+<button type="submit" class="btn-ios-primary py-3 text-xs uppercase">
+Filtrar Control General
+</button>
+
+</form>
+
+</div>
+
+<div class="flex justify-between items-center mb-6">
+
+<h2 class="text-2xl font-bold italic">Control General (Almuerzos)</h2>
+
+<div class="flex gap-2">
+
+<a href="/exportar_excel?tipo=general&fecha_inicio={{fecha_inicio_general}}&fecha_fin={{fecha_fin_general}}&empleado={{empleado_general}}"
+class="bg-green-600/20 text-green-400 border border-green-500/20 px-4 py-2 rounded-xl text-[10px] font-bold uppercase">
+Excel
+</a>
+
+<a href="/exportar_pdf?tipo=general&fecha_inicio={{fecha_inicio_general}}&fecha_fin={{fecha_fin_general}}&empleado={{empleado_general}}"
+class="bg-red-600/20 text-red-400 border border-red-500/20 px-4 py-2 rounded-xl text-[10px] font-bold uppercase">
+PDF
+</a>
+</div>
+
+</div>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div class="glass-panel p-6 rounded-3xl border-l-4 border-blue-500 shadow-xl">
+                <p class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Total Empleados</p>
+                <p class="text-3xl font-bold mt-1">{{ stats.total_empleados }}</p>
+            </div>
+            <div class="glass-panel p-6 rounded-3xl border-l-4 border-green-500 shadow-xl">
+                <p class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Registros Rango</p>
+                <p class="text-3xl font-bold mt-1 text-green-400">{{ stats.total_registros }}</p>
+            </div>
+            <div class="glass-panel p-6 rounded-3xl border-l-4 border-red-500 shadow-xl">
+                <p class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Finalizados</p>
+                <p class="text-3xl font-bold mt-1 text-red-400">{{ stats.finalizados }}</p>
+            </div>
+            <div class="glass-panel p-6 rounded-3xl border-l-4 border-purple-500 shadow-xl">
+                <p class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">En Receso</p>
+                <p class="text-3xl font-bold mt-1 text-purple-400">{{ stats.en_receso or 0 }}</p>
+            </div>
+        </div>
+
+        <div class="glass-panel p-6 rounded-[2.5rem] overflow-x-auto shadow-2xl">
+            <table class="w-full text-left min-w-[1100px]">
+                <thead>
+                    <tr class="text-gray-400 text-[10px] uppercase border-b border-white/10 tracking-widest">
+                        <th class="pb-4 px-4 font-bold">Empleado</th>
+                        <th class="pb-4 px-2 font-bold">Sede</th>
+                        <th class="pb-4 px-2 font-bold">Fecha</th>
+                        <th class="pb-4 px-2 font-bold text-green-400">Ingreso</th>
+                        <th class="pb-4 px-2 font-bold text-yellow-500">Almuerzo</th>
+                        <th class="pb-4 px-2 font-bold text-red-400">Salida</th>
+                        <th class="pb-4 px-2 font-bold text-center">Estado</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-white/5">
+                    {% for a in asistencias %}{% if a.sede != 'Hibrido' %}
+                    <tr class="hover:bg-white/[0.03] transition">
+                        <td class="py-4 px-4">
+                            <div class="flex items-center gap-3">
+                                <img src="/static/fotos/{{ a.foto }}" class="w-10 h-10 rounded-full object-cover border border-white/10">
+                                <span class="text-sm font-semibold">{{ a.nombre }} {{ a.apellido }}</span>
+                            </div>
+                        </td>
+                        <td class="py-4 px-2 text-[10px] text-gray-500 uppercase">{{ a.sede }}</td>
+                        <td class="py-4 px-2 text-xs text-gray-400 font-mono">{{ a.fecha }}</td>
+                        <td class="py-4 px-2 text-sm font-bold text-green-400">{{ a.ingreso or '—' }}</td>
+                        <td class="py-4 px-2 text-xs text-yellow-500 font-medium">{{ a.inicio_almuerzo or '—' }} / {{ a.fin_almuerzo or '—' }}</td>
+                        <td class="py-4 px-2 text-sm font-bold text-red-400">{{ a.salida or '—' }}</td>
+                        <td class="py-4 px-2 text-center text-[9px] font-bold">
+                            {% if a.salida %}<span class="px-3 py-1 bg-red-500/10 text-red-400 rounded-full">🔴 FINALIZADO</span>
+                            {% elif a.inicio_almuerzo and not a.fin_almuerzo %}<span class="px-3 py-1 bg-yellow-500/10 text-yellow-400 rounded-full">🟡 EN ALMUERZO</span>
+                            {% elif a.ingreso %}<span class="px-3 py-1 bg-green-500/10 text-green-400 rounded-full">🟢 PRESENTE</span>
+                            {% else %}<span class="px-3 py-1 bg-gray-500/10 text-gray-400 rounded-full">⚪ SIN REGISTRO</span>{% endif %}
+                        </td>
+                    </tr>
+                    {% endif %}{% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section id="listadoHibrido" class="seccion hidden">
+        <div class="glass-panel p-6 rounded-[2rem] mb-6">
+
+<form method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+
+<input type="date" name="fecha_inicio_hibrido" value="{{fecha_inicio_hibrido}}" class="ios-input">
+
+<input type="date" name="fecha_fin_hibrido" value="{{fecha_fin_hibrido}}" class="ios-input">
+
+<select name="empleado_hibrido" class="ios-input">
+<option value="">Todos los empleados</option>
+
+{% for e in lista_empleados %}
+<option value="{{e.id}}" {% if empleado_hibrido == e.id|string %}selected{% endif %}>
+{{e.nombre}} {{e.apellido}}
+</option>
+{% endfor %}
+
+</select>
+
+<button type="submit" class="btn-ios-primary py-3 text-xs uppercase">
+Filtrar Control Híbrido
+</button>
+
+</form>
+
+</div>
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold italic text-purple-400">Control Híbrido (Cena y Descanso)</h2>
+           <div class="flex gap-2">
+
+<a href="/exportar_excel?tipo=hibrido&fecha_inicio={{fecha_inicio_hibrido}}&fecha_fin={{fecha_fin_hibrido}}&empleado={{empleado_hibrido}}"
+class="bg-green-600/20 text-green-400 border border-green-500/20 px-4 py-2 rounded-xl text-[10px] font-bold uppercase">
+
+Excel Híbrido
+</a>
+
+<a href="/exportar_pdf?tipo=hibrido&fecha_inicio={{fecha_inicio_hibrido}}&fecha_fin={{fecha_fin_hibrido}}&empleado={{empleado_hibrido}}"
+class="bg-red-600/20 text-red-400 border border-red-500/20 px-4 py-2 rounded-xl text-[10px] font-bold uppercase">
+
+PDF Híbrido
+</a>
+
+</div>
+        </div>
+
+        <div class="glass-panel p-6 rounded-[2.5rem] overflow-x-auto shadow-2xl border-purple-500/20">
+            <table class="w-full text-left min-w-[1100px]">
+                <thead>
+                    <tr class="text-purple-300 text-[10px] uppercase border-b border-white/10 tracking-widest">
+                        <th class="pb-4 px-4 font-bold">Empleado</th>
+                        <th class="pb-4 px-2 font-bold">Fecha</th>
+                        <th class="pb-4 px-2 font-bold text-green-400">Ingreso</th>
+                        <th class="pb-4 px-2 font-bold text-orange-400">Descanso (In/Fin)</th>
+                        <th class="pb-4 px-2 font-bold text-pink-400">Cena (In/Fin)</th>
+                        <th class="pb-4 px-2 font-bold text-red-400">Salida</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-white/5">
+                    {% for a in asistencias %}{% if a.sede == 'Hibrido' %}
+                    <tr class="hover:bg-purple-500/[0.05] transition">
+                        <td class="py-4 px-4">
+                            <div class="flex items-center gap-3">
+                                <img src="/static/fotos/{{ a.foto }}" class="w-10 h-10 rounded-full object-cover border border-purple-500/30">
+                                <span class="text-sm font-semibold">{{ a.nombre }} {{ a.apellido }}</span>
+                            </div>
+                        </td>
+                        <td class="py-4 px-2 text-xs text-gray-400 font-mono">{{ a.fecha }}</td>
+                        <td class="py-4 px-2 text-sm font-bold text-green-400">{{ a.ingreso or '—' }}</td>
+                        <td class="py-4 px-2 text-[11px] text-orange-400 font-medium">{{ a.inicio_descanso or '—' }} / {{ a.fin_descanso or '—' }}</td>
+                        <td class="py-4 px-2 text-[11px] text-pink-400 font-medium">{{ a.inicio_cena or '—' }} / {{ a.fin_cena or '—' }}</td>
+                        <td class="py-4 px-2 text-sm font-bold text-red-400">{{ a.salida or '—' }}</td>
+                    </tr>
+                    {% endif %}
+                    {% else %}
+                    <tr><td colspan="6" class="p-10 text-center text-gray-500 text-sm italic">No se encontraron registros en el rango seleccionado.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+  <section id="listadoEmpleados" class="seccion hidden">
+    <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+        <h2 class="text-2xl font-bold italic">Gestión de Personal</h2>
+        
+        <div class="relative w-full md:w-72">
+            <input type="text" id="buscadorEmpleado" onkeyup="filtrarEmpleados()" 
+                placeholder="Buscar por nombre..." 
+                class="ios-input text-sm pl-10 w-full border-white/10 focus:border-purple-500">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+            </span>
+        </div>
+    </div>
+
+    <div id="contenedorTarjetas" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {% for emp in empleados %}
+            {% if emp.activo|int == 1 %}
+            <div class="card-empleado glass-panel p-6 rounded-[2rem] flex items-center gap-5 hover:border-purple-500 transition duration-300">
+                <img src="/static/fotos/{{ emp.foto or 'default.jpg' }}" class="w-20 h-20 rounded-2xl object-cover border border-white/10">
+                <div class="flex-1">
+                    <h3 class="nombre-targeta font-bold text-lg text-white">{{ emp.nombre }} {{ emp.apellido }}</h3>
+                    <p class="text-[10px] text-purple-400 uppercase font-black tracking-tighter">{{ emp.sede }} | {{ emp.rol }}</p>
+                    <div class="flex gap-2 mt-4">
+                        <button onclick='abrirModalEditarJSON(`{{ emp|tojson|safe }}`)' class="btn-edit px-4 py-2 text-[10px] font-bold flex-1 uppercase">Editar</button>
+                        <button onclick="abrirModalEliminar('{{ emp.id }}','{{ emp.nombre }}')" class="btn-delete px-4 py-2 text-[10px] font-bold flex-1 uppercase">Borrar</button>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+</section>
+
+
+</main>
+  
+
+<div id="modalEditar" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden flex items-center justify-center z-[100] p-4">
+    <div class="glass-panel p-8 rounded-[2.5rem] w-full max-w-lg border border-white/20 text-white">
+        <h3 class="text-xl font-bold mb-6 text-center italic">Editar Perfil</h3>
+
+        <div class="flex justify-center mb-4">
+            <img id="edit_preview_actual" src="" class="w-20 h-20 rounded-full object-cover border-2 border-purple-500/50">
+        </div>
+
+       <form action="/editar_usuario" method="POST" enctype="multipart/form-data" class="space-y-4">
+    <input type="hidden" name="id" id="edit_id">
+    
+    <div class="grid grid-cols-2 gap-4">
+        <input name="nombre" id="edit_nombre" class="ios-input text-sm" placeholder="Nombre">
+        <input name="apellido" id="edit_apellido" class="ios-input text-sm" placeholder="Apellido">
+    </div>
+    
+    <div class="grid grid-cols-2 gap-4">
+        <select name="sede" id="edit_sede" class="ios-input text-sm" required>
+        <option value="">Sede</option>
+        <option value="Matriz">Matriz</option>
+        <option value="Alpallana">Alpallana</option>
+        <option value="Hacienda Agusbella">Hacienda Agusbella</option>
+        <option value="Hibrido">Hibrido</option>
+    </select>
+        <input name="area" id="edit_area" class="ios-input text-sm" placeholder="Área">
+    </div>
+
+    <div class="space-y-1">
+        <label class="text-[9px] uppercase tracking-widest text-gray-400 ml-2">Actualizar Foto (Opcional)</label>
+        <input type="file" name="foto_subida_edit" accept="image/*" class="ios-input text-xs file:bg-transparent file:border-0 file:text-purple-400 file:font-bold file:mr-4">
+    </div>
+
+    <select name="rol" id="edit_rol" class="ios-input text-sm" onchange="toggleAdminFields(this.value)">
+        <option value="empleado">Empleado</option>
+        <option value="administrador">Administrador</option>
+    </select>
+
+    <div id="edit_admin_fields" class="space-y-4 pt-4 border-t border-white/10 hidden">
+        <input name="usuario" id="edit_usuario" placeholder="Usuario" class="ios-input text-sm">
+        <input name="password" id="edit_password" placeholder="Nueva Clave (Opcional)" type="password" class="ios-input text-sm">
+    </div>
+
+    <div class="flex gap-3 pt-4">
+        <button type="submit" class="btn-ios-primary flex-1 py-4 uppercase text-xs">Guardar Cambios</button>
+        <button type="button" onclick="cerrarModalEditar()" class="bg-white/10 flex-1 py-4 rounded-2xl text-xs uppercase">Cerrar</button>
+    </div>
+</form>
+    </div>
+</div>
+
+
+
+<script>
+    function mostrarSeccion(id) {
+        document.querySelectorAll(".seccion").forEach(sec => sec.classList.add("hidden"));
+        document.getElementById(id).classList.remove("hidden");
+        localStorage.setItem('panel_actual', id);
+        
+        if(window.innerWidth < 1024) {
+            document.getElementById('sidebar').classList.remove('open');
+            document.getElementById('overlay').classList.add('hidden');
+        }
+    }
+
+    document.getElementById('btnMenu').onclick = () => {
+        document.getElementById('sidebar').classList.toggle('open');
+        document.getElementById('overlay').classList.toggle('hidden');
+    };
+
+    // Cámara y Captura
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const fotoInput = document.getElementById("foto_capturada");
+    const previewImg = document.getElementById("previewFoto");
+
+    if (navigator.mediaDevices) {
+        navigator.mediaDevices.getUserMedia({video:true})
+            .then(s => video.srcObject = s)
+            .catch(e => console.log("Cámara no disponible"));
+    }
+
+    document.getElementById("tomarFoto").onclick = () => {
+        canvas.getContext("2d").drawImage(video, 0, 0, 320, 240);
+        const data = canvas.toDataURL("image/jpeg");
+        fotoInput.value = data;
+        previewImg.src = data;
+        previewImg.classList.remove("hidden");
+        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Capturado', showConfirmButton: false, timer: 1000, background: '#1a1a40', color: '#fff' });
+    };
+
+    window.onload = () => {
+        const sec = localStorage.getItem('panel_actual') || 'registrarUsuario';
+        mostrarSeccion(sec);
+    };
+
+    document.getElementById("rolUsuario").onchange = function() {
+        document.getElementById("datosAdmin").classList.toggle("hidden", this.value !== "administrador");
+    };
+
+    function toggleAdminFields(rol) {
+        document.getElementById("edit_admin_fields").classList.toggle("hidden", rol !== "administrador");
+    }
+
+    function abrirModalEditarJSON(json) {
+    const emp = JSON.parse(json);
+    document.getElementById("modalEditar").classList.remove("hidden");
+    document.getElementById("edit_id").value = emp.id;
+    document.getElementById("edit_nombre").value = emp.nombre;
+    document.getElementById("edit_apellido").value = emp.apellido;
+    document.getElementById("edit_sede").value = emp.sede;
+    document.getElementById("edit_area").value = emp.area;
+    document.getElementById("edit_rol").value = emp.rol;
+    document.getElementById("edit_usuario").value = emp.usuario || '';
+
+    // Si añadiste el preview opcional:
+    document.getElementById("edit_preview_actual").src = "/static/fotos/" + (emp.foto || 'default.jpg');
+
+    toggleAdminFields(emp.rol);
+}
+
+    function cerrarModalEditar() { document.getElementById("modalEditar").classList.add("hidden"); }
+
+
+    function abrirModalEliminar(id, nombre) {
+        Swal.fire({
+            title: '¿Eliminar a ' + nombre + '?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            confirmButtonText: 'Borrar',
+            background: '#1a1a40', color: '#fff'
+        }).then(res => {
+            if(res.isConfirmed) {
+                window.location.href = '/eliminar_usuario/' + id;
+            }
+        });
+    }
+
+    function filtrarEmpleados() {
+    const input = document.getElementById('buscadorEmpleado');
+    const filter = input.value.toLowerCase();
+    const tarjetas = document.getElementsByClassName('card-empleado');
+
+    for (let i = 0; i < tarjetas.length; i++) {
+        // Buscamos el h3 que contiene el nombre completo
+        const nombreCompleto = tarjetas[i].querySelector('.nombre-targeta').innerText.toLowerCase();
+        
+        if (nombreCompleto.includes(filter)) {
+            tarjetas[i].style.display = ""; // Muestra
+            tarjetas[i].style.opacity = "1";
+        } else {
+            tarjetas[i].style.display = "none"; // Oculta
+        }
+    }
+}
+</script>
+
+</body>
+</html>

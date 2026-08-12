@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Biométrico - ISTS FACE-ID</title>
+    <link rel="icon" href="https://superarse.edu.ec/assets/img/content/logo/superarse_gris.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --neon-purple: #7c3aed;
+            --deep-purple: #4c1d95;
+            --success-green: #10b981;
+        }
+
+        body {
+            background: radial-gradient(circle at top right, #1a1a40, #000000);
+            background-attachment: fixed;
+            font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+            color: white;
+            overflow-x: hidden;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Óvalo Dinámico y Responsivo */
+        .face-guide {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: min(55vw, 220px);
+            height: min(70vw, 280px);
+            border: 3px solid var(--neon-purple);
+            border-style: double;
+            border-radius: 50% / 45%;
+            z-index: 20;
+            pointer-events: none;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 0.75;
+            filter: drop-shadow(0 0 8px var(--neon-purple));
+        }
+
+        .face-guide.success {
+            border: 4px solid var(--success-green);
+            border-style: solid;
+            box-shadow: 0 0 40px rgba(16, 185, 129, 0.5);
+            transform: translate(-50%, -50%) scale(1.02);
+            opacity: 1;
+            filter: drop-shadow(0 0 15px var(--success-green));
+        }
+
+        .scanner-line {
+            height: 2px;
+            background: linear-gradient(to right, transparent, #a78bfa, #ffffff, #a78bfa, transparent);
+            box-shadow: 0 0 15px #7c3aed;
+            position: absolute;
+            width: 100%;
+            z-index: 10;
+            top: 0;
+            animation: scan 4s infinite linear;
+        }
+
+        @keyframes scan {
+            0% { top: 10%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 90%; opacity: 0; }
+        }
+
+        .iphone-btn { 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            letter-spacing: 0.05em;
+        }
+        .iphone-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px rgba(124, 58, 237, 0.4);
+        }
+        .iphone-btn:active { transform: scale(0.95); }
+        
+        .precision-badge {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #34d399;
+            padding: 4px 12px;
+            border-radius: 99px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .fade-in-up {
+            animation: fadeInUp 0.5s ease-out forwards;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .pop-in {
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        select option {
+            background-color: #0f172a;
+            color: white;
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
+</head>
+<body class="min-h-screen flex flex-col justify-between relative">
+
+<!-- Modal Central de Éxito -->
+<div id="modalExito" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md hidden p-4">
+    <div class="glass-card border border-green-500/40 rounded-[2.5rem] md:rounded-[3rem] p-6 md:p-10 max-w-md w-full text-center shadow-[0_0_80px_rgba(16,185,129,0.3)] pop-in relative overflow-hidden">
+        <div class="absolute -top-10 -left-10 w-40 h-40 bg-green-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="w-16 h-16 md:w-20 md:h-20 bg-emerald-500/10 border-2 border-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4 md:mb-6 shadow-[0_0_25px_rgba(16,185,129,0.4)]">
+            <svg class="w-8 h-8 md:w-10 md:h-10 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+            </svg>
+        </div>
+
+        <span class="px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] inline-block mb-3">
+            ¡ASISTENCIA REGISTRADA!
+        </span>
+
+        <h2 id="modalNombreUsuario" class="text-xl md:text-2xl font-black text-white tracking-tight mb-1">...</h2>
+        <p id="modalMensaje" class="text-xs font-semibold text-emerald-300 uppercase tracking-wider mb-6">...</p>
+
+        <div class="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center justify-around mb-6 text-left">
+            <div>
+                <span class="text-[10px] text-gray-400 font-bold uppercase block">Acción</span>
+                <span id="modalTipoRegistro" class="text-xs font-bold text-white capitalize">--</span>
+            </div>
+            <div class="w-px h-8 bg-white/10"></div>
+            <div>
+                <span class="text-[10px] text-gray-400 font-bold uppercase block">Hora</span>
+                <span id="modalHora" class="text-xs font-bold text-purple-300 font-mono">--:--:--</span>
+            </div>
+        </div>
+
+        <p class="text-[11px] text-gray-400 font-medium animate-pulse">Reiniciando sistema en breve...</p>
+    </div>
+</div>
+
+<!-- Encabezado Principal Responsivo -->
+<header class="w-full bg-black/60 backdrop-blur-xl border-b border-white/5 py-3 px-4 md:px-12 flex justify-between items-center sticky top-0 z-50">
+    <div class="flex items-center gap-2 md:gap-4">
+        <div class="p-1.5 md:p-2 bg-gradient-to-tr from-purple-600 to-indigo-600 rounded-xl shadow-lg">
+            <img src="https://superarse.edu.ec/assets/img/content/logo/superarse_gris.png" alt="Logo ISTS" class="h-5 md:h-7 brightness-200">
+        </div>
+        <div class="flex flex-col">
+            <h1 class="text-sm md:text-base font-extrabold tracking-tight text-white leading-none">ISTS</h1>
+            <span class="text-[8px] md:text-[10px] font-bold text-purple-400 tracking-[0.2em] uppercase mt-0.5">FACE-ID</span>
+        </div>
+    </div>
+    <div class="flex items-center gap-2 md:gap-6">
+        <div id="clock" class="font-mono text-xs md:text-lg font-semibold tracking-wider text-white/90 bg-white/5 px-2.5 py-1 md:px-4 md:py-1.5 rounded-full border border-white/10">00:00:00</div>
+        <a href="/login" class="iphone-btn bg-white/10 hover:bg-white text-white hover:text-black text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-5 md:py-2.5 rounded-full border border-white/20 transition-all flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path></svg>
+            <span class="hidden sm:inline">Acceso Admin</span>
+        </a>
+    </div>
+</header>
+
+<!-- Contenido Principal -->
+<main class="max-w-7xl mx-auto p-4 md:p-12 w-full flex-1">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-8 items-center">
+        
+        <!-- Panel Izquierdo (Móviles: Abajo | Desktop: Izquierda) -->
+        <div class="lg:col-span-3 space-y-3 md:space-y-4 order-2 lg:order-1">
+            <div class="glass-card p-4 md:p-6 rounded-[2rem] md:rounded-[2.5rem]">
+                <h3 class="text-purple-300/60 text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] mb-2 md:mb-4">Estado del Sistema</h3>
+                <div class="space-y-2 md:space-y-4">
+                    <div class="flex flex-col">
+                        <span class="text-[10px] md:text-[11px] text-gray-400 uppercase font-bold">Ubicación/Campus</span>
+                        <span id="sede-display" class="font-bold text-white text-sm md:text-base">Buscando ubicación...</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></div>
+                        <span id="scanner-status" class="text-xs font-bold text-blue-400 tracking-wide">Cámara Activa</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card p-4 md:p-6 rounded-[2rem] md:rounded-[2.5rem]">
+                <h3 class="text-purple-300/60 text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] mb-2 md:mb-4">Reconocimiento Facial</h3>
+                <div class="flex items-center justify-between">
+                    <span class="text-xs text-gray-300 font-semibold">Nivel Coincidencia</span>
+                    <div id="precision-display" class="precision-badge">--%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel Central: Cámara (Ajustada Responsiva para Móvil) -->
+        <div class="lg:col-span-6 order-1 lg:order-2">
+            <div class="relative group max-w-md mx-auto lg:max-w-none">
+                <div class="absolute -inset-1 bg-gradient-to-b from-purple-600/30 to-transparent rounded-[2.5rem] md:rounded-[3.5rem] blur-xl opacity-60"></div>
+                
+                <div class="relative glass-card rounded-[2.5rem] md:rounded-[3rem] p-3 md:p-4 shadow-3xl">
+                    <!-- Aspect Ratio Dinámico: Vertical en Celulares (4:5) y Horizontal en Desktop (16:9) -->
+                    <div class="relative rounded-[2rem] md:rounded-[2.2rem] overflow-hidden bg-slate-950 aspect-[4/5] sm:aspect-[4/3] md:aspect-video shadow-inner flex items-center justify-center">
+                        <div id="face-guide" class="face-guide"></div>
+                        <div id="scanner-line" class="scanner-line"></div>
+                        <video id="video" autoplay muted playsinline class="w-full h-full object-cover scale-x-[-1]"></video>
+                    </div>
+                    
+                    <div class="mt-4 md:mt-6 mb-2">
+                        <div id="mensajeBienvenida" class="text-center font-bold text-white text-base md:text-lg tracking-wide uppercase">
+                            <span class="opacity-60 text-purple-300">Cargando cámara...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel Derecho: Acciones -->
+        <div class="lg:col-span-3 order-3">
+            <div id="formulario" class="glass-card rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 hidden border-t-2 border-green-500/50 shadow-green-500/10 fade-in-up">
+                <div class="text-center mb-4 md:mb-6">
+                    <div class="inline-block p-2.5 rounded-full bg-green-500/10 mb-2">
+                        <svg class="w-6 h-6 md:w-7 md:h-7 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                    <h2 class="text-base md:text-lg font-black text-white">¡IDENTIDAD VERIFICADA!</h2>
+                    <p class="text-[11px] md:text-xs text-gray-400 mt-1">Selecciona la actividad a registrar</p>
+                </div>
+
+                <div class="space-y-4 md:space-y-5">
+                    <div class="space-y-1.5 md:space-y-2">
+                        <label class="text-[10px] md:text-[11px] uppercase tracking-wider text-purple-300/80 font-bold ml-1">Tipo de Registro</label>
+                        <select id="tipo" class="w-full bg-slate-900 border border-white/10 rounded-xl md:rounded-2xl p-3.5 md:p-4 text-white text-sm font-semibold outline-none focus:border-purple-500 transition-all cursor-pointer">
+                            <option value="" disabled selected>Cargando opciones...</option>
+                        </select>
+                    </div>
+                    
+                    <button id="registrar" class="iphone-btn w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold py-3.5 md:py-4 rounded-xl md:rounded-2xl shadow-xl uppercase text-xs tracking-widest flex items-center justify-center gap-2">
+                        <span>Confirmar Registro</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                    </button>
+                    
+                    <div id="mensaje" class="text-center text-xs font-bold text-purple-300 uppercase mt-2"></div>
+                </div>
+            </div>
+            
+            <div id="placeholder-info" class="p-6 md:p-10 text-center glass-card rounded-[2rem] md:rounded-[2.5rem] border border-dashed border-white/10">
+                <div class="flex flex-col items-center gap-3 md:gap-4">
+                    <div class="relative">
+                        <div class="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-purple-500/20 border-t-purple-500 animate-spin"></div>
+                    </div>
+                    <p class="text-xs tracking-wide text-gray-400 font-semibold leading-relaxed">
+                        Posiciona tu rostro<br>frente a la cámara...
+                    </p>
+                </div>
+            </div>
+        </div>    
+    </div>
+</main>
+
+<footer class="w-full py-3 md:py-4 text-center border-t border-white/5 bg-black/20 mt-4">
+    <span class="text-white/40 text-[10px] md:text-[11px] font-bold tracking-[0.3em] uppercase"> ISTS FACE-ID v3.0</span>
+</footer>
+
+<script>
+    const opcionesPresencial = `
+        <optgroup label="── Jornada ──" class="bg-slate-900 text-purple-300 font-bold">
+            <option value="ingreso" class="bg-slate-900 text-white py-2">🟢 Entrada</option>
+            <option value="salida" class="bg-slate-900 text-white py-2">🔴 Salida</option>
+        </optgroup>
+        <optgroup label="── Almuerzo ──" class="bg-slate-900 text-purple-300 font-bold">
+            <option value="inicio_almuerzo" class="bg-slate-900 text-white py-2">🍴 Salida a Almuerzo</option>
+            <option value="fin_almuerzo" class="bg-slate-900 text-white py-2">✅ Retorno de Almuerzo</option>
+        </optgroup>
+    `;
+
+    const opcionesHibrido = `
+        <optgroup label="── Jornada ──" class="bg-slate-900 text-purple-300 font-bold">
+            <option value="ingreso" class="bg-slate-900 text-white py-2">🟢 Entrada</option>
+            <option value="salida" class="bg-slate-900 text-white py-2">🔴 Salida</option>
+        </optgroup>
+        <optgroup label="── Descanso ──" class="bg-slate-900 text-purple-300 font-bold">
+            <option value="inicio_descanso" class="bg-slate-900 text-white py-2">☕ Inicio Descanso</option>
+            <option value="fin_descanso" class="bg-slate-900 text-white py-2">✅ Fin Descanso</option>
+        </optgroup>
+        <optgroup label="── Cena ──" class="bg-slate-900 text-purple-300 font-bold">
+            <option value="inicio_cena" class="bg-slate-900 text-white py-2">🌙 Inicio Cena</option>
+            <option value="fin_cena" class="bg-slate-900 text-white py-2">✅ Fin Cena</option>
+        </optgroup>
+    `;
+
+    setInterval(() => {
+        document.getElementById('clock').innerText = new Date().toLocaleTimeString('es-EC', {hour12: false});
+    }, 1000);
+
+    const video = document.getElementById('video');
+    const feedback = document.getElementById('mensajeBienvenida');
+    const scannerStatus = document.getElementById('scanner-status');
+    const scannerLine = document.getElementById('scanner-line');
+    const sedeDisplay = document.getElementById('sede-display');
+    const precisionDisplay = document.getElementById('precision-display');
+    const faceGuide = document.getElementById('face-guide');
+    const selectTipo = document.getElementById('tipo');
+    
+    let escanerActivo = true;
+    let fotoBase64 = "";
+    let usuarioDetectado = null;
+    let nombreUsuarioDetectado = "";
+
+    async function initCamera() {
+        try {
+            // Solicitud adaptativa de cámara
+            const isMobile = window.innerWidth < 768;
+            const videoConstraints = isMobile 
+                ? { facingMode: "user", width: { ideal: 720 }, height: { ideal: 960 } }
+                : { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } };
+
+            const stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints });
+            video.srcObject = stream;
+            video.onloadedmetadata = () => {
+                video.play();
+                feedback.innerHTML = '<span class="text-blue-400">Cámara Conectada</span>';
+                setTimeout(() => {
+                    feedback.innerHTML = '<span class="animate-pulse text-purple-300">Buscando Rostro...</span>';
+                    escanearAutomaticamente();
+                }, 1000);
+            };
+        } catch (err) {
+            feedback.innerHTML = '<span class="text-red-400 text-sm">Error: No se detectó cámara</span>';
+        }
+    }
+
+    async function escanearAutomaticamente() {
+        if (!escanerActivo) return;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
+        const ctx = canvas.getContext('2d');
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(video, 0, 0);
+        
+        fotoBase64 = canvas.toDataURL('image/jpeg', 0.7);
+
+        try {
+            const resp = await fetch("/reconocer_usuario", {
+                method: "POST",
+                headers: {"Content-Type":"application/json"},
+                body: JSON.stringify({ foto: fotoBase64 })
+            });
+            const data = await resp.json();
+
+            if (data.status === "ok") {
+                escanerActivo = false;
+                usuarioDetectado = data.usuario_id;
+                nombreUsuarioDetectado = data.nombre;
+                
+                feedback.innerHTML = `<span class="text-green-400">¡Hola, ${data.nombre} ${data.apellido}!</span>`;
+                sedeDisplay.innerText = data.sede || "Campus Principal"; 
+                precisionDisplay.innerText = data.precision || "99.1%";
+                
+                const sedeNormalizada = (data.sede || "").toLowerCase();
+                if (sedeNormalizada.includes('hibrid') || sedeNormalizada.includes('híbrid')) {
+                    selectTipo.innerHTML = opcionesHibrido;
+                } else {
+                    selectTipo.innerHTML = opcionesPresencial;
+                }
+
+                faceGuide.classList.add('success');
+                scannerStatus.innerText = "Acceso Autorizado";
+                scannerStatus.classList.replace('text-blue-400', 'text-green-400');
+                scannerLine.style.display = 'none';
+                
+                document.getElementById('formulario').classList.remove('hidden');
+                document.getElementById('placeholder-info').classList.add('hidden');
+            } else {
+                setTimeout(escanearAutomaticamente, 800);
+            }
+        } catch (e) {
+            setTimeout(escanearAutomaticamente, 2000);
+        }
+    }
+
+    document.getElementById('registrar').addEventListener('click', async () => {
+        if (!usuarioDetectado) return;
+        const btn = document.getElementById('registrar');
+        const textoTipoSelected = selectTipo.options[selectTipo.selectedIndex].text;
+        
+        btn.disabled = true;
+        btn.innerText = "PROCESANDO REGISTRO...";
+
+        try {
+            const resp = await fetch("/registrar", {
+                method: "POST",
+                headers: {"Content-Type":"application/json"},
+                body: JSON.stringify({ 
+                    tipo: selectTipo.value, 
+                    foto: fotoBase64, 
+                    usuario_id: usuarioDetectado 
+                })
+            });
+            const data = await resp.json();
+            
+            document.getElementById('modalNombreUsuario').innerText = nombreUsuarioDetectado;
+            document.getElementById('modalMensaje').innerText = data.msg || "Registro guardado correctamente";
+            document.getElementById('modalTipoRegistro').innerText = textoTipoSelected;
+            document.getElementById('modalHora').innerText = new Date().toLocaleTimeString('es-EC', {hour12: false});
+
+            document.getElementById('modalExito').classList.remove('hidden');
+            
+            setTimeout(() => {
+                document.getElementById('modalExito').classList.add('hidden');
+                reiniciarSistema();
+            }, 3500);
+
+        } catch (e) {
+            document.getElementById('mensaje').innerText = "Ocurrió un error al guardar";
+            btn.disabled = false;
+            btn.innerText = "Reintentar";
+        }
+    });
+
+    function reiniciarSistema() {
+        usuarioDetectado = null;
+        nombreUsuarioDetectado = "";
+        escanerActivo = true;
+        const btn = document.getElementById('registrar');
+        
+        document.getElementById('formulario').classList.add('hidden');
+        document.getElementById('placeholder-info').classList.remove('hidden');
+        document.getElementById('mensaje').innerText = "";
+        
+        btn.disabled = false;
+        btn.innerText = "Confirmar Registro";
+        btn.classList.remove('from-green-600');
+        btn.classList.add('from-purple-600');
+        
+        faceGuide.classList.remove('success');
+        precisionDisplay.innerText = "--%";
+        sedeDisplay.innerText = "Buscando ubicación...";
+        feedback.innerHTML = '<span class="animate-pulse text-purple-300">Buscando Rostro...</span>';
+        scannerStatus.innerText = "Cámara Activa";
+        scannerStatus.classList.replace('text-green-400', 'text-blue-400');
+        scannerLine.style.display = 'block';
+
+        escanearAutomaticamente();
+    }
+
+    initCamera();
+</script>
+</body>
+</html>
