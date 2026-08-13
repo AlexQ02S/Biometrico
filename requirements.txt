@@ -1,0 +1,17 @@
+# Servidor y API Web
+Flask>=2.0.0
+
+# Procesamiento de imágenes y visión por computadora
+opencv-python>=4.5.0
+numpy>=1.21.0
+Pillow>=9.0.0
+
+# Reconocimiento facial y landmarks
+dlib>=19.22.0
+face-recognition>=1.3.0
+face-recognition-models>=0.3.0
+
+# Herramientas auxiliares
+Werkzeug>=2.0.0
+gunicorn>=20.1.0
+python-dotenv>=1.0.0

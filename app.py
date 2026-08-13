@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, session, jsonify, send_file, url_for, flash, send_from_directory
 import mysql.connector
 import os
+import json
 from datetime import datetime, time, timedelta
 import base64
 import face_recognition
@@ -12,6 +13,7 @@ import ipaddress
 import sys
 import webbrowser
 from threading import Timer
+from threading import Lock
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
 from io import BytesIO
@@ -20,6 +22,8 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.pdfgen import canvas
+from dotenv import load_dotenv
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -28,6 +32,10 @@ def abrir_navegador():
     webbrowser.open_new("http://127.0.0.1:5000")
 
 buffer = BytesIO()
+
+# Cargar variables de entorno desde .env (si existe)
+DOTENV_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+load_dotenv(DOTENV_PATH)
 
 # ===============================
 # BASE PATH (LECTURA)
@@ -72,7 +80,16 @@ app = Flask(
     static_url_path='/static'
 )
 
-app.secret_key = "secret123"
+TRUST_PROXY_HEADERS = os.getenv("TRUST_PROXY_HEADERS", "false").strip().lower() == "true"
+if TRUST_PROXY_HEADERS:
+    # Permite obtener IP/protocolo reales cuando hay Nginx/Cloudflare delante.
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+APP_SECRET_KEY = os.getenv("APP_SECRET_KEY")
+if not APP_SECRET_KEY:
+    raise RuntimeError("Falta la variable de entorno APP_SECRET_KEY")
+
+app.secret_key = APP_SECRET_KEY
 KNOWN_ENCODINGS = []
 KNOWN_METADATA = []
 
@@ -80,26 +97,61 @@ KNOWN_METADATA = []
 # 🛡️ CONFIGURACIÓN Y MIDDLEWARE DE IP
 # ===============================
 
-ALLOWED_IPS = [
-    "45.173.230.31",   # IP Pública Matriz Superarse
-    "45.4.203.191",   # IP Pública Alpallana
-    "200.10.15.20",    # IP Campus Sur
-    "127.0.0.1",       # Localhost
-    "::1"              # Localhost IPv6
-]
+ALLOWED_IPS_CSV = os.getenv(
+    "ALLOWED_IPS_CSV",
+    "45.173.230.31,45.4.203.191,200.10.15.20",
+)
+ALLOW_LOCALHOST_IPS = os.getenv("ALLOW_LOCALHOST_IPS", "true").strip().lower() == "true"
 
-ALLOWED_NETWORKS = [
-    ipaddress.ip_network("192.168.40.0/24"),  # Red local Campus Norte
-    ipaddress.ip_network("192.168.255.0/24")  # Red Dinamica Alpallana
-]
+ALLOWED_IPS = [ip.strip() for ip in ALLOWED_IPS_CSV.split(",") if ip.strip()]
+if ALLOW_LOCALHOST_IPS:
+    ALLOWED_IPS.extend(["127.0.0.1", "::1"])
 
-# 🔑 TOKENS SEGUROS PARA LAS 3 PERSONAS
-# Estructura: "TOKEN_SECRETO": {"id": ID_USUARIO_EN_BD, "nombre": "Nombre"}
-TOKENS_ACCESO_REMOTO = {
-    "AccesoPersona1_98a76b": {"usuario_id": 80, "nombre": "Mayra Nataly"},
-    "AccesoPersona2_54f32c": {"usuario_id": 78, "nombre": "Vilma Noemi"},
-    "AccesoPersona3_12e98d": {"usuario_id": 92, "nombre": "Francis Melanny"},
-}
+ALLOWED_NETWORKS_CSV = os.getenv(
+    "ALLOWED_NETWORKS_CSV",
+    "192.168.40.0/24,192.168.255.0/24",
+)
+ALLOWED_NETWORKS = []
+for net in [n.strip() for n in ALLOWED_NETWORKS_CSV.split(",") if n.strip()]:
+    try:
+        ALLOWED_NETWORKS.append(ipaddress.ip_network(net, strict=False))
+    except ValueError:
+        print(f"Red inválida en ALLOWED_NETWORKS_CSV: {net}")
+
+# 🔑 TOKENS SEGUROS CARGADOS DESDE .ENV
+# Estructura JSON esperada en REMOTE_ACCESS_TOKENS_JSON:
+# {"TOKEN_SECRETO": {"usuario_id": 1, "nombre": "Nombre"}}
+remote_tokens_json = os.getenv("REMOTE_ACCESS_TOKENS_JSON", "{}")
+try:
+    TOKENS_ACCESO_REMOTO = json.loads(remote_tokens_json)
+    if not isinstance(TOKENS_ACCESO_REMOTO, dict):
+        TOKENS_ACCESO_REMOTO = {}
+except json.JSONDecodeError:
+    TOKENS_ACCESO_REMOTO = {}
+
+MASTER_KEY = os.getenv("MASTER_KEY", "")
+
+# Configuración de limpieza automática de fotos de asistencias
+PHOTO_CLEANUP_ENABLED = os.getenv("PHOTO_CLEANUP_ENABLED", "true").strip().lower() == "true"
+PHOTO_RETENTION_DAYS = int(os.getenv("PHOTO_RETENTION_DAYS", "14"))
+PHOTO_CLEANUP_INTERVAL_DAYS = int(os.getenv("PHOTO_CLEANUP_INTERVAL_DAYS", "7"))
+PHOTO_CLEANUP_STATE_FILE = os.path.join(SAVE_PATH, "photo_cleanup.last_run")
+_PHOTO_CLEANUP_LOCK = Lock()
+
+
+def obtener_ip_cliente():
+    # En VPS con Nginx/Cloudflare, usamos cabeceras forward si están habilitadas.
+    if TRUST_PROXY_HEADERS:
+        cf_ip = request.headers.get("CF-Connecting-IP")
+        if cf_ip and cf_ip.strip():
+            return cf_ip.strip()
+
+        xff = request.headers.get("X-Forwarded-For")
+        if xff and xff.strip():
+            # Tomamos la primera IP del encabezado (cliente real)
+            return xff.split(",")[0].strip()
+
+    return (request.remote_addr or "").strip()
 
 @app.before_request
 def restringir_por_ip():
@@ -107,7 +159,10 @@ def restringir_por_ip():
     if request.path.startswith('/static'):
         return
 
-    # 2. VALIDAR SI VIENEN CON TOKEN REMOTO EN LA URL (ej: /?token=AccesoPersona1_98a76b)
+    # Ejecuta limpieza solo si corresponde por calendario
+    ejecutar_limpieza_semanal_si_corresponde()
+
+    # 2. VALIDAR SI VIENEN CON TOKEN REMOTO EN LA URL (ej: /?token=TOKEN_SEGURO)
     token_url = request.args.get("token")
     if token_url and token_url in TOKENS_ACCESO_REMOTO:
         # Autenticamos automáticamente en la sesión
@@ -121,9 +176,7 @@ def restringir_por_ip():
         return  # ¡Pasa directo!
 
     # 4. VALIDACIÓN TRADICIONAL DE IP (Para todos los demás)
-    client_ip = request.headers.get("CF-Connecting-IP") or request.remote_addr
-    if client_ip:
-        client_ip = client_ip.strip()
+    client_ip = obtener_ip_cliente()
 
     if client_ip in ALLOWED_IPS:
         return
@@ -154,12 +207,23 @@ LANDMARKS_PATH = os.path.join(BASE_PATH, "dataset", "modelo", "shape_predictor_6
 # ===============================
 def conectar():
    try:
+        db_host = os.getenv("DB_HOST")
+        db_user = os.getenv("DB_USER")
+        db_password = os.getenv("DB_PASSWORD")
+        db_name = os.getenv("DB_NAME")
+        db_port = int(os.getenv("DB_PORT", "3306"))
+
+        if not all([db_host, db_user, db_password, db_name]):
+            raise RuntimeError(
+                "Faltan variables de entorno de base de datos (DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)"
+            )
+
         conexion = mysql.connector.connect(
-            host="23.111.178.102",
-            user="superar1_Tics",
-            password="/Msvs5297*",
-            database="superar1_asistencia",
-            port=3306,
+            host=db_host,
+            user=db_user,
+            password=db_password,
+            database=db_name,
+            port=db_port,
             connection_timeout=10,
             autocommit=True,
             use_pure=True
@@ -168,23 +232,7 @@ def conectar():
    except mysql.connector.Error as e:
         print("ERROR REAL DB:", e)
         return None
-    
-#def conectar():
- #   try:
-  #      conexion = mysql.connector.connect(
-   #         host="localhost",
-    #        user="root",
-     #       password="Patoboris123",
-      #      database="asistencia",
-       #     port=3306,
-        #    connection_timeout=10,
-         #   autocommit=True,
-          #  use_pure=True
-        #)
-        #return conexion
-    #except mysql.connector.Error as e:
-     #   print("ERROR REAL DB:", e)
-      #  return None#
+
 def cargar_rostros_en_memoria():
     global KNOWN_ENCODINGS, KNOWN_METADATA
     print("🔄 Cargando rostros en memoria...")
@@ -230,8 +278,6 @@ def verificar_acceso_maestro():
     data = request.get_json()
     pin = data.get("pin")
 
-    MASTER_KEY = "200210"
-
     if pin == MASTER_KEY:
 
         session["terminal_activa"] = True
@@ -268,6 +314,150 @@ def obtener_hora_web():
         pass
 
     return datetime.now()
+
+
+def _leer_ultima_ejecucion_limpieza():
+    if not os.path.exists(PHOTO_CLEANUP_STATE_FILE):
+        return None
+
+    try:
+        with open(PHOTO_CLEANUP_STATE_FILE, "r", encoding="utf-8") as f:
+            valor = f.read().strip()
+        if not valor:
+            return None
+        return datetime.fromisoformat(valor)
+    except Exception:
+        return None
+
+
+def _guardar_ultima_ejecucion_limpieza(fecha_hora):
+    try:
+        with open(PHOTO_CLEANUP_STATE_FILE, "w", encoding="utf-8") as f:
+            f.write(fecha_hora.isoformat())
+    except Exception as e:
+        print("No se pudo guardar estado de limpieza:", e)
+
+
+def limpiar_fotos_asistencia_antiguas():
+    if not PHOTO_CLEANUP_ENABLED:
+        return {"ok": True, "msg": "Limpieza deshabilitada", "eliminadas": 0, "actualizadas": 0}
+
+    corte = (obtener_hora_web() - timedelta(days=PHOTO_RETENTION_DAYS)).date()
+    con = conectar()
+    if not con:
+        return {"ok": False, "msg": "No se pudo conectar a BD para limpieza", "eliminadas": 0, "actualizadas": 0}
+
+    eliminadas = 0
+    actualizadas = 0
+
+    try:
+        cursor = con.cursor(dictionary=True)
+
+        # Fotos de asistencias antiguas candidatas
+        cursor.execute(
+            """
+            SELECT DISTINCT foto
+            FROM asistencias
+            WHERE fecha < %s
+              AND foto IS NOT NULL
+              AND foto <> ''
+            """,
+            (corte,),
+        )
+        fotos_asistencia = {
+            row["foto"]
+            for row in cursor.fetchall()
+            if row.get("foto") and row["foto"] != "default.jpg"
+        }
+
+        if not fotos_asistencia:
+            return {"ok": True, "msg": "No hay fotos antiguas para limpiar", "eliminadas": 0, "actualizadas": 0}
+
+        # Evitar borrar fotos usadas como perfil de usuario
+        cursor.execute(
+            """
+            SELECT DISTINCT foto
+            FROM usuarios
+            WHERE foto IS NOT NULL
+              AND foto <> ''
+            """
+        )
+        fotos_perfil = {
+            row["foto"]
+            for row in cursor.fetchall()
+            if row.get("foto") and row["foto"] != "default.jpg"
+        }
+
+        fotos_a_limpiar = sorted(fotos_asistencia - fotos_perfil)
+        if not fotos_a_limpiar:
+            return {"ok": True, "msg": "No hay fotos limpiables (todas usadas por perfiles)", "eliminadas": 0, "actualizadas": 0}
+
+        placeholders = ",".join(["%s"] * len(fotos_a_limpiar))
+
+        # Primero desvinculamos en BD para no dejar referencias rotas
+        try:
+            cursor.execute(
+                f"UPDATE asistencias SET foto = NULL WHERE fecha < %s AND foto IN ({placeholders})",
+                [corte, *fotos_a_limpiar],
+            )
+        except mysql.connector.Error:
+            # Fallback si la columna no permite NULL
+            cursor.execute(
+                f"UPDATE asistencias SET foto = '' WHERE fecha < %s AND foto IN ({placeholders})",
+                [corte, *fotos_a_limpiar],
+            )
+
+        actualizadas = cursor.rowcount if cursor.rowcount and cursor.rowcount > 0 else 0
+        con.commit()
+
+        for nombre_foto in fotos_a_limpiar:
+            ruta = os.path.join(CARPETA_FOTOS, nombre_foto)
+            if os.path.exists(ruta):
+                try:
+                    os.remove(ruta)
+                    eliminadas += 1
+                except Exception as e:
+                    print(f"No se pudo borrar {nombre_foto}: {e}")
+
+        return {
+            "ok": True,
+            "msg": "Limpieza ejecutada",
+            "eliminadas": eliminadas,
+            "actualizadas": actualizadas,
+        }
+
+    except Exception as e:
+        con.rollback()
+        return {"ok": False, "msg": f"Error en limpieza: {str(e)}", "eliminadas": 0, "actualizadas": 0}
+    finally:
+        con.close()
+
+
+def ejecutar_limpieza_semanal_si_corresponde(force=False):
+    if not PHOTO_CLEANUP_ENABLED:
+        return
+
+    if not _PHOTO_CLEANUP_LOCK.acquire(blocking=False):
+        return
+
+    try:
+        ahora = datetime.now()
+        ultima = _leer_ultima_ejecucion_limpieza()
+        due = (
+            force
+            or ultima is None
+            or (ahora - ultima) >= timedelta(days=PHOTO_CLEANUP_INTERVAL_DAYS)
+        )
+
+        if not due:
+            return
+
+        resultado = limpiar_fotos_asistencia_antiguas()
+        if resultado.get("ok"):
+            _guardar_ultima_ejecucion_limpieza(ahora)
+        print("Limpieza fotos:", resultado)
+    finally:
+        _PHOTO_CLEANUP_LOCK.release()
 
 # ===============================
 # GUARDAR IMAGEN BASE64
@@ -1357,4 +1547,8 @@ def reconocer_usuario():
 # ===============================
 if __name__ == "__main__":
     cargar_rostros_en_memoria()
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    ejecutar_limpieza_semanal_si_corresponde(force=True)
+    app_host = os.getenv("APP_HOST", "0.0.0.0")
+    app_port = int(os.getenv("APP_PORT", "5000"))
+    app_debug = os.getenv("APP_DEBUG", "false").strip().lower() == "true"
+    app.run(host=app_host, port=app_port, debug=app_debug)

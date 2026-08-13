@@ -248,7 +248,7 @@ PDF
                     <tr class="hover:bg-white/[0.03] transition">
                         <td class="py-4 px-4">
                             <div class="flex items-center gap-3">
-                                <img src="/static/fotos/{{ a.foto }}" class="w-10 h-10 rounded-full object-cover border border-white/10">
+                                <img src="/static/fotos/{{ a.foto or 'default.jpg' }}" class="w-10 h-10 rounded-full object-cover border border-white/10">
                                 <span class="text-sm font-semibold">{{ a.nombre }} {{ a.apellido }}</span>
                             </div>
                         </td>
@@ -333,7 +333,7 @@ PDF Híbrido
                     <tr class="hover:bg-purple-500/[0.05] transition">
                         <td class="py-4 px-4">
                             <div class="flex items-center gap-3">
-                                <img src="/static/fotos/{{ a.foto }}" class="w-10 h-10 rounded-full object-cover border border-purple-500/30">
+                                <img src="/static/fotos/{{ a.foto or 'default.jpg' }}" class="w-10 h-10 rounded-full object-cover border border-purple-500/30">
                                 <span class="text-sm font-semibold">{{ a.nombre }} {{ a.apellido }}</span>
                             </div>
                         </td>
