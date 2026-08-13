@@ -4,4 +4,3 @@ build/
 __pycache__/
 *.spec
 *.pyc
-.env
