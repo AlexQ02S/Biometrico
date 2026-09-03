@@ -4,3 +4,8 @@ build/
 __pycache__/
 *.spec
 *.pyc
+
+# Variables de entorno
+.env
+.env.*
+!.env.example

@@ -206,16 +206,17 @@ LANDMARKS_PATH = os.path.join(BASE_PATH, "dataset", "modelo", "shape_predictor_6
 # CONEXIÓN DB
 # ===============================
 def conectar():
-   try:
-        db_host = os.getenv("DB_HOST","2.25.195.166")
-        db_user = os.getenv("DB_USER","root")
-        db_password = os.getenv("DB_PASSWORD","W&557012951003an")
-        db_name = os.getenv("DB_NAME","superar1_asistencia")
+    try:
+        db_host = os.getenv("DB_HOST", "mariadb")
+        db_user = os.getenv("DB_USER", "")
+        db_password = os.getenv("DB_PASSWORD", "")
+        db_name = os.getenv("DB_NAME", "superar1_asistencia")
         db_port = int(os.getenv("DB_PORT", "3306"))
 
         if not all([db_host, db_user, db_password, db_name]):
             raise RuntimeError(
-                "Faltan variables de entorno de base de datos (DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)"
+                "Faltan variables de entorno de base de datos "
+                "(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)"
             )
 
         conexion = mysql.connector.connect(
@@ -228,8 +229,10 @@ def conectar():
             autocommit=True,
             use_pure=True
         )
-        return conexion 
-   except mysql.connector.Error as e:
+
+        return conexion
+
+    except mysql.connector.Error as e:
         print("ERROR REAL DB:", e)
         return None
 

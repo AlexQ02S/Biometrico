@@ -1,0 +1,24 @@
+services:
+  biometrico:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: biometrico
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    environment:
+      TZ: America/Guayaquil
+
+    ports:
+      - "8095:5000"
+
+    networks:
+      - moodle_net
+
+networks:
+  moodle_net:
+    external: true
