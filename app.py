@@ -1172,21 +1172,10 @@ def crear_usuario():
     sede = request.form.get("sede")
     area = request.form.get("area")
     rol = request.form.get("rol")
-    if rol not in ["empleado", "administrador"]:
-        flash("Selecciona un rol válido.", "error")
-        return redirect("/admin")
+    usuario = request.form.get("usuario") if rol == "administrador" else None
+    password = request.form.get("password") if rol == "administrador" else None
 
-    usuario = None
-    password = None
-    if rol == "administrador":
-        usuario = (request.form.get("usuario") or "").strip()
-        password = request.form.get("password") or ""
-        if not usuario or not password:
-            flash(
-                "Para registrar un administrador, ingresa usuario y contraseña.",
-                "error",
-            )
-            return redirect("/admin")
+    if rol == "administrador" and password:
         password = generate_password_hash(password)
 
     foto_subida = request.files.get("foto_subida")
@@ -1240,17 +1229,6 @@ def crear_usuario():
 
     try:
         cursor = con.cursor(dictionary=True)
-        if rol == "administrador":
-            cursor.execute(
-                "SELECT id FROM usuarios WHERE usuario=%s LIMIT 1",
-                (usuario,),
-            )
-            if cursor.fetchone():
-                if os.path.exists(temp_registro):
-                    os.remove(temp_registro)
-                flash("Ese nombre de usuario ya está registrado.", "error")
-                return redirect("/admin")
-
         cursor.execute(
             "SELECT nombre, apellido, foto FROM usuarios WHERE activo = 1"
         )
