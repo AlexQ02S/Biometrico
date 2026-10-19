@@ -74,6 +74,22 @@
 </head>
 
 <body class="flex h-screen overflow-hidden">
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <script>
+            document.addEventListener("DOMContentLoaded", () => {
+                {% for category, message in messages %}
+                    Swal.fire({
+                        icon: {{ ("success" if category == "success" else "error") | tojson }},
+                        text: {{ message | tojson }},
+                        background: "#1a1a40",
+                        color: "#fff"
+                    });
+                {% endfor %}
+            });
+        </script>
+    {% endif %}
+{% endwith %}
 
 <div class="lg:hidden fixed top-5 right-5 z-50">
     <button id="btnMenu" class="p-4 glass-panel rounded-2xl text-white shadow-2xl border-white/30 active:scale-90 transition-transform">
@@ -142,8 +158,8 @@
             </select>
             
             <div id="datosAdmin" class="col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-5 hidden">
-                <input name="usuario" placeholder="Usuario" class="ios-input text-sm">
-                <input name="password" placeholder="Password" type="password" class="ios-input text-sm">
+                <input name="usuario" id="usuarioNuevo" placeholder="Usuario" class="ios-input text-sm" disabled>
+                <input name="password" id="passwordNuevo" placeholder="Password" type="password" class="ios-input text-sm" disabled>
             </div>
             
             <div class="col-span-1 md:col-span-2 glass-panel p-6 rounded-3xl mt-4 text-center">
@@ -487,7 +503,12 @@ PDF Híbrido
     };
 
     document.getElementById("rolUsuario").onchange = function() {
-        document.getElementById("datosAdmin").classList.toggle("hidden", this.value !== "administrador");
+        const esAdministrador = this.value === "administrador";
+        document.getElementById("datosAdmin").classList.toggle("hidden", !esAdministrador);
+        document.getElementById("usuarioNuevo").required = esAdministrador;
+        document.getElementById("usuarioNuevo").disabled = !esAdministrador;
+        document.getElementById("passwordNuevo").required = esAdministrador;
+        document.getElementById("passwordNuevo").disabled = !esAdministrador;
     };
 
     function toggleAdminFields(rol) {
