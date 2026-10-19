@@ -12,7 +12,8 @@ import pandas as pd
 import ipaddress
 import sys
 import webbrowser
-from threading import Lock, Thread, Timer
+from threading import Timer
+from threading import Lock
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
 from io import BytesIO
@@ -91,7 +92,6 @@ if not APP_SECRET_KEY:
 app.secret_key = APP_SECRET_KEY
 KNOWN_ENCODINGS = []
 KNOWN_METADATA = []
-_FACE_RELOAD_LOCK = Lock()
 
 # ===============================
 # 🛡️ CONFIGURACIÓN Y MIDDLEWARE DE IP
@@ -240,43 +240,31 @@ def cargar_rostros_en_memoria():
     global KNOWN_ENCODINGS, KNOWN_METADATA
     print("🔄 Cargando rostros en memoria...")
 
-    with _FACE_RELOAD_LOCK:
-        con = conectar()
-        if not con:
-            print("❌ No se pudieron actualizar los rostros: error de conexión.")
-            return
+    con = conectar()
+    if not con: return
 
-        try:
-            cursor = con.cursor(dictionary=True)
-            cursor.execute(
-                "SELECT id, nombre, apellido, sede, foto "
-                "FROM usuarios WHERE activo = 1"
-            )
-            usuarios = cursor.fetchall()
-        finally:
-            con.close()
+    cursor = con.cursor(dictionary=True)
+    cursor.execute("SELECT id, nombre, apellido, sede, foto FROM usuarios WHERE activo = 1")
+    usuarios = cursor.fetchall()
+    con.close()
 
-        encodings_cargados = []
-        metadata_cargada = []
-        for u in usuarios:
-            ruta_foto = os.path.join(CARPETA_FOTOS, u["foto"])
-            if os.path.exists(ruta_foto) and u["foto"] != "default.jpg":
-                try:
-                    img = face_recognition.load_image_file(ruta_foto)
-                    encodings = face_recognition.face_encodings(img)
-                    if encodings:
-                        encodings_cargados.append(encodings[0])
-                        metadata_cargada.append(u)
-                except Exception as e:
-                    print(f"❌ Error cargando foto de {u['nombre']}: {e}")
-
-        KNOWN_ENCODINGS = encodings_cargados
-        KNOWN_METADATA = metadata_cargada
-        print(f"✅ {len(KNOWN_ENCODINGS)} rostros cargados correctamente.")
+    KNOWN_ENCODINGS = []
+    KNOWN_METADATA = []
 
 
-def actualizar_rostros_en_segundo_plano():
-    Thread(target=cargar_rostros_en_memoria, daemon=True).start()
+    for u in usuarios:
+        ruta_foto = os.path.join(CARPETA_FOTOS, u["foto"])
+        if os.path.exists(ruta_foto) and u["foto"] != "default.jpg":
+            try:
+                img = face_recognition.load_image_file(ruta_foto)
+                encodings = face_recognition.face_encodings(img)
+                if encodings:
+                    KNOWN_ENCODINGS.append(encodings[0])
+                    KNOWN_METADATA.append(u)
+            except Exception as e:
+                print(f"❌ Error cargando foto de {u['nombre']}: {e}")
+
+    print(f"✅ {len(KNOWN_ENCODINGS)} rostros cargados correctamente.")
 # ===============================
 # PORTAL PRINCIPAL (NUEVO)
 # ===============================
@@ -1324,7 +1312,7 @@ def crear_usuario():
         con.close()
 
     registrar_auditoria(session["user"]["id"], f"Crear usuario: {nombre}")
-    actualizar_rostros_en_segundo_plano()
+    cargar_rostros_en_memoria()
 
     flash(f"Usuario {nombre} registrado exitosamente", "success")
     return redirect("/admin")
@@ -1451,7 +1439,7 @@ def editar_usuario():
     finally:
         con.close()
 
-    actualizar_rostros_en_segundo_plano()
+    cargar_rostros_en_memoria()
     registrar_auditoria(session["user"]["id"], "Editar usuario")
 
     return redirect("/admin")
@@ -1490,7 +1478,7 @@ def eliminar_usuario(id):
     registrar_auditoria(
         session["user"]["id"], f"Deshabilitar usuario ID {id}"
     )
-    actualizar_rostros_en_segundo_plano()
+    cargar_rostros_en_memoria()
 
     return redirect("/admin")
 
