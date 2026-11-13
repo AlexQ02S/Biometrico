@@ -206,16 +206,17 @@ LANDMARKS_PATH = os.path.join(BASE_PATH, "dataset", "modelo", "shape_predictor_6
 # CONEXIÓN DB
 # ===============================
 def conectar():
-   try:
-        db_host = os.getenv("DB_HOST")
-        db_user = os.getenv("DB_USER")
-        db_password = os.getenv("DB_PASSWORD")
-        db_name = os.getenv("DB_NAME")
+    try:
+        db_host = os.getenv("DB_HOST", "mariadb")
+        db_user = os.getenv("DB_USER", "")
+        db_password = os.getenv("DB_PASSWORD", "")
+        db_name = os.getenv("DB_NAME", "superar1_asistencia")
         db_port = int(os.getenv("DB_PORT", "3306"))
 
         if not all([db_host, db_user, db_password, db_name]):
             raise RuntimeError(
-                "Faltan variables de entorno de base de datos (DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)"
+                "Faltan variables de entorno de base de datos "
+                "(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)"
             )
 
         conexion = mysql.connector.connect(
@@ -228,18 +229,20 @@ def conectar():
             autocommit=True,
             use_pure=True
         )
-        return conexion 
-   except mysql.connector.Error as e:
+
+        return conexion
+
+    except mysql.connector.Error as e:
         print("ERROR REAL DB:", e)
         return None
 
 def cargar_rostros_en_memoria():
     global KNOWN_ENCODINGS, KNOWN_METADATA
     print("🔄 Cargando rostros en memoria...")
-    
+
     con = conectar()
     if not con: return
-    
+
     cursor = con.cursor(dictionary=True)
     cursor.execute("SELECT id, nombre, apellido, sede, foto FROM usuarios WHERE activo = 1")
     usuarios = cursor.fetchall()
@@ -247,7 +250,7 @@ def cargar_rostros_en_memoria():
 
     KNOWN_ENCODINGS = []
     KNOWN_METADATA = []
-    
+
 
     for u in usuarios:
         ruta_foto = os.path.join(CARPETA_FOTOS, u["foto"])
@@ -260,7 +263,7 @@ def cargar_rostros_en_memoria():
                     KNOWN_METADATA.append(u)
             except Exception as e:
                 print(f"❌ Error cargando foto de {u['nombre']}: {e}")
-    
+
     print(f"✅ {len(KNOWN_ENCODINGS)} rostros cargados correctamente.")
 # ===============================
 # PORTAL PRINCIPAL (NUEVO)
