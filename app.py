@@ -413,7 +413,25 @@ def limpiar_fotos_asistencia_antiguas():
         actualizadas = cursor.rowcount if cursor.rowcount and cursor.rowcount > 0 else 0
         con.commit()
 
+        cursor.execute(
+            """
+            SELECT foto FROM usuarios
+            WHERE foto IS NOT NULL AND foto <> ''
+            UNION
+            SELECT foto FROM asistencias
+            WHERE foto IS NOT NULL AND foto <> ''
+            """
+        )
+        fotos_referenciadas = {
+            row["foto"]
+            for row in cursor.fetchall()
+            if row.get("foto") and row["foto"] != "default.jpg"
+        }
+
         for nombre_foto in fotos_a_limpiar:
+            if nombre_foto in fotos_referenciadas:
+                continue
+
             ruta = os.path.join(CARPETA_FOTOS, nombre_foto)
             if os.path.exists(ruta):
                 try:
@@ -1271,8 +1289,8 @@ def crear_usuario():
         cursor.execute(
             """
             INSERT INTO usuarios 
-            (nombre, apellido, sede, area, rol, usuario, password, foto)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            (nombre, apellido, sede, area, rol, usuario, password, foto, activo)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 1)
             """,
             (
                 nombre,
