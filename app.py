@@ -1451,20 +1451,14 @@ def eliminar_usuario(id):
 
     con = conectar()
     if not con:
-        return redirect("/admin")
+        return "No se pudo conectar a la base de datos.", 503
 
     try:
         cursor = con.cursor(dictionary=True)
-        cursor.execute("SELECT foto FROM usuarios WHERE id=%s", (id,))
+        cursor.execute("SELECT id FROM usuarios WHERE id=%s", (id,))
         user = cursor.fetchone()
-
-        if user and user.get("foto") and user["foto"] != "default.jpg":
-            ruta = os.path.join(CARPETA_FOTOS, user["foto"])
-            if os.path.exists(ruta):
-                try:
-                    os.remove(ruta)
-                except Exception:
-                    pass
+        if not user:
+            return "Usuario no encontrado.", 404
 
         cursor.execute("UPDATE usuarios SET activo = 0 WHERE id = %s", (id,))
         con.commit()
