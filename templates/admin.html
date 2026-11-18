@@ -370,6 +370,7 @@ PDF Híbrido
 
     <div id="contenedorTarjetas" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {% for emp in empleados %}
+            {% if emp.activo|int == 1 %}
             <div class="card-empleado glass-panel p-6 rounded-[2rem] flex items-center gap-5 hover:border-purple-500 transition duration-300">
                 <img src="/static/fotos/{{ emp.foto or 'default.jpg' }}" class="w-20 h-20 rounded-2xl object-cover border border-white/10">
                 <div class="flex-1">
@@ -381,6 +382,7 @@ PDF Híbrido
                     </div>
                 </div>
             </div>
+            {% endif %}
         {% endfor %}
     </div>
 </section>

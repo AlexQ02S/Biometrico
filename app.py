@@ -413,25 +413,7 @@ def limpiar_fotos_asistencia_antiguas():
         actualizadas = cursor.rowcount if cursor.rowcount and cursor.rowcount > 0 else 0
         con.commit()
 
-        cursor.execute(
-            """
-            SELECT foto FROM usuarios
-            WHERE foto IS NOT NULL AND foto <> ''
-            UNION
-            SELECT foto FROM asistencias
-            WHERE foto IS NOT NULL AND foto <> ''
-            """
-        )
-        fotos_referenciadas = {
-            row["foto"]
-            for row in cursor.fetchall()
-            if row.get("foto") and row["foto"] != "default.jpg"
-        }
-
         for nombre_foto in fotos_a_limpiar:
-            if nombre_foto in fotos_referenciadas:
-                continue
-
             ruta = os.path.join(CARPETA_FOTOS, nombre_foto)
             if os.path.exists(ruta):
                 try:
@@ -1451,14 +1433,20 @@ def eliminar_usuario(id):
 
     con = conectar()
     if not con:
-        return "No se pudo conectar a la base de datos.", 503
+        return redirect("/admin")
 
     try:
         cursor = con.cursor(dictionary=True)
-        cursor.execute("SELECT id FROM usuarios WHERE id=%s", (id,))
+        cursor.execute("SELECT foto FROM usuarios WHERE id=%s", (id,))
         user = cursor.fetchone()
-        if not user:
-            return "Usuario no encontrado.", 404
+
+        if user and user.get("foto") and user["foto"] != "default.jpg":
+            ruta = os.path.join(CARPETA_FOTOS, user["foto"])
+            if os.path.exists(ruta):
+                try:
+                    os.remove(ruta)
+                except Exception:
+                    pass
 
         cursor.execute("UPDATE usuarios SET activo = 0 WHERE id = %s", (id,))
         con.commit()
