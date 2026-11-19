@@ -16,8 +16,14 @@ services:
     ports:
       - "8095:5000"
 
+    volumes:
+      - fotos_data:/app/static/fotos
+
     networks:
       - moodle_net
+
+volumes:
+  fotos_data:
 
 networks:
   moodle_net:
