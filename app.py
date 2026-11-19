@@ -196,6 +196,10 @@ def restringir_por_ip():
 # 4. RUTA ESPECIAL PARA VER LAS IMÁGENES
 @app.route('/static/fotos/<path:filename>')
 def custom_static(filename):
+    if filename == "default.jpg" and not os.path.isfile(
+        os.path.join(CARPETA_FOTOS, filename)
+    ):
+        return send_from_directory(CARPETA_FOTOS, "default.svg")
     return send_from_directory(CARPETA_FOTOS, filename)
 
 # Ruta del modelo .dat
